@@ -13,8 +13,11 @@ def load_image(file):
 def is_image(filename):
     return any(filename.endswith(ext) for ext in EXTENSIONS)
 
-def is_label(filename):
+def is_label_cityscape(filename):
     return filename.endswith("_labelTrainIds.png")
+
+def is_label(filename):
+    return any(filename.endswith('png'))
 
 def image_path(root, basename, extension):
     return os.path.join(root, f'{basename}{extension}')
@@ -75,7 +78,7 @@ class cityscapes(Dataset):
 
         #[os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(".")) for f in fn]
         #self.filenamesGt = [image_basename(f) for f in os.listdir(self.labels_root) if is_image(f)]
-        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label(f)]
+        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label_cityscape(f)]
         self.filenamesGt.sort()
 
         self.co_transform = co_transform # ADDED THIS
@@ -97,4 +100,37 @@ class cityscapes(Dataset):
 
     def __len__(self):
         return len(self.filenames)
+
+
+'''
+Add Dataset reader for river segmentation task.
+'''
+class river(Dataset):
+
+    def __init__(self,root):
+        self.images_root = os.path.join(root,'image')
+        self.labels_root = os.path.join(root,'label')
+
+        self.filenames = [os.path.join(dp,f) for dp,dn,fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
+        self.filenames.sort()
+
+        self.labelnames = [os.path.join(dp,f) for dp,dn,fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
+        self.labelnames.sort()
+
+    def __getitem__(self,index):
+        filename = self.filenames[index]
+        labelname = self.labelnames[index]
+
+        image_path = os.path.join(self.images_root,filename)
+        label_path = os.path.join(self.labels_root,labelname)
+
+        with open(image_path,'rb') as f:
+            image = load_image(f).convert('RGB')
+        
+        with open(label_path,'rb') as f:
+            label = load_image(f).convert('P')
+
+
+        return image,label
+
 
